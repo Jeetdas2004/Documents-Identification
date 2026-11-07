@@ -33,18 +33,26 @@ if not os.path.exists(STATIC_DIR):
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 @app.get("/", response_class=HTMLResponse)
+@app.get("/api", response_class=HTMLResponse)
+@app.get("/api/index", response_class=HTMLResponse)
+@app.get("/api/index.py", response_class=HTMLResponse)
 async def serve_index():
-    index_path = os.path.join(STATIC_DIR, "index.html")
-    if not os.path.exists(index_path):
-        alt_path = os.path.join(os.getcwd(), "static", "index.html")
-        if os.path.exists(alt_path):
-            index_path = alt_path
-    if os.path.exists(index_path):
-        with open(index_path, "r", encoding="utf-8") as f:
-            return f.read()
+    for candidate in [
+        os.path.join(STATIC_DIR, "index.html"),
+        os.path.join(BASE_DIR, "public", "index.html"),
+        os.path.join(BASE_DIR, "static", "index.html"),
+        os.path.join(os.getcwd(), "public", "index.html"),
+        os.path.join(os.getcwd(), "static", "index.html"),
+        "public/index.html",
+        "static/index.html"
+    ]:
+        if os.path.exists(candidate):
+            with open(candidate, "r", encoding="utf-8") as f:
+                return f.read()
     return "<h1>DocuID AI Application Backend Active. Static frontend initializing...</h1>"
 
 @app.get("/api/stats")
+@app.get("/stats")
 async def get_stats():
     docs = list(PROCESSED_DOCUMENTS.values())
     total = len(docs)
@@ -113,6 +121,7 @@ def process_and_register_pages(pages: List[Dict[str, Any]], original_filename: s
     return results
 
 @app.post("/api/upload")
+@app.post("/upload")
 async def upload_documents(files: List[UploadFile] = File(...)):
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded.")
@@ -127,6 +136,7 @@ async def upload_documents(files: List[UploadFile] = File(...)):
     return {"status": "success", "processed_count": len(all_results), "items": all_results}
 
 @app.post("/api/sample")
+@app.post("/sample")
 async def process_sample_dataset():
     sample_path = os.path.join(BASE_DIR, "documents.pdf")
     if not os.path.exists(sample_path):
@@ -144,6 +154,7 @@ async def process_sample_dataset():
     return {"status": "success", "processed_count": len(registered), "items": registered}
 
 @app.get("/api/preview/{item_id}")
+@app.get("/preview/{item_id}")
 async def get_document_preview(item_id: str):
     if item_id in PAGE_IMAGES:
         return Response(content=PAGE_IMAGES[item_id], media_type="image/jpeg")
@@ -162,6 +173,7 @@ class UpdateFieldRequest(BaseModel):
     fields: Dict[str, Any]
 
 @app.post("/api/update-fields")
+@app.post("/update-fields")
 async def update_fields(req: UpdateFieldRequest):
     if req.item_id not in PROCESSED_DOCUMENTS:
         raise HTTPException(status_code=404, detail="Item not found.")
@@ -169,12 +181,14 @@ async def update_fields(req: UpdateFieldRequest):
     return {"status": "success", "item": PROCESSED_DOCUMENTS[req.item_id]}
 
 @app.post("/api/clear")
+@app.post("/clear")
 async def clear_all():
     PROCESSED_DOCUMENTS.clear()
     PAGE_IMAGES.clear()
     return {"status": "success", "message": "All documents cleared."}
 
 @app.get("/api/export-csv")
+@app.get("/export-csv")
 async def export_csv():
     docs = list(PROCESSED_DOCUMENTS.values())
     if not docs:
@@ -205,10 +219,12 @@ async def export_csv():
     )
 
 @app.get("/api/export-json")
+@app.get("/export-json")
 async def export_json():
     return list(PROCESSED_DOCUMENTS.values())
 
 @app.get("/api/download-zip")
+@app.get("/download-zip")
 async def download_organized_zip():
     docs = list(PROCESSED_DOCUMENTS.values())
     if not docs:

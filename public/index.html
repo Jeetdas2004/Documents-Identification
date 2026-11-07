@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DocuID Pro - AI Document Identification & Intelligence</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- JSZip for Instant Client-side Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            display: ['Outfit', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .glass-card {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glass-card:hover {
+      border-color: rgba(99, 102, 241, 0.3);
+    }
+    .gradient-hero {
+      background: radial-gradient(circle at 50% 0%, rgba(99, 102, 241, 0.15) 0%, rgba(15, 23, 42, 0) 70%);
+    }
+    .badge-aadhar { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-pan { background: rgba(99, 102, 241, 0.15); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
+    .badge-driver { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-voter { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .badge-passport { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .badge-salary { background: rgba(20, 184, 166, 0.15); color: #2dd4bf; border: 1px solid rgba(20, 184, 166, 0.3); }
+    .badge-form16 { background: rgba(244, 63, 94, 0.15); color: #fb7185; border: 1px solid rgba(244, 63, 94, 0.3); }
+    .badge-bank { background: rgba(6, 182, 212, 0.15); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.3); }
+    .badge-cheque { background: rgba(217, 119, 6, 0.15); color: #f59e0b; border: 1px solid rgba(217, 119, 6, 0.3); }
+    .badge-bill { background: rgba(249, 115, 22, 0.15); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.3); }
+    .badge-unknown { background: rgba(100, 116, 139, 0.15); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.3); }
+    
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="sticky top-0 z-40 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <i data-lucide="scan-face" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <span class="font-display font-bold text-xl tracking-tight text-white">DocuID <span class="text-indigo-400">Pro</span></span>
+            <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">v2.0 Revived</span>
+          </div>
+          <p class="text-xs text-slate-400 hidden sm:block">Identity Document Identification & Extraction Suite</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <button id="btn-sample-nav" onclick="loadSampleDataset()" class="flex items-center space-x-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-medium transition shadow-md shadow-indigo-600/25">
+          <i data-lucide="sparkles" class="w-4 h-4"></i>
+          <span>Try Sample (10 Docs)</span>
+        </button>
+
+        <button onclick="downloadZip()" class="flex items-center space-x-1.5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs sm:text-sm font-medium border border-slate-700 transition">
+          <i data-lucide="folder-archive" class="w-4 h-4"></i>
+          <span class="hidden md:inline">Download</span> <span>ZIP</span>
+        </button>
+
+        <button onclick="exportCsv()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition" title="Export CSV Report">
+          <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+        </button>
+
+        <button onclick="clearAll()" class="p-2 rounded-lg bg-slate-800 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 border border-slate-700 transition" title="Clear All">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 gradient-hero">
+    
+    <!-- Hero / Metrics Section -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
+        <div class="flex items-center justify-between text-slate-400 mb-2">
+          <span class="text-xs uppercase tracking-wider font-semibold">Total Documents</span>
+          <i data-lucide="files" class="w-5 h-5 text-indigo-400"></i>
+        </div>
+        <div id="stat-total" class="font-display font-extrabold text-3xl text-white">0</div>
+        <p class="text-xs text-slate-400 mt-1">Processed pages</p>
+      </div>
+
+      <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
+        <div class="flex items-center justify-between text-slate-400 mb-2">
+          <span class="text-xs uppercase tracking-wider font-semibold">Identified Types</span>
+          <i data-lucide="shield-check" class="w-5 h-5 text-emerald-400"></i>
+        </div>
+        <div id="stat-classified" class="font-display font-extrabold text-3xl text-emerald-400">0</div>
+        <p class="text-xs text-slate-400 mt-1">Categories matched</p>
+      </div>
+
+      <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
+        <div class="flex items-center justify-between text-slate-400 mb-2">
+          <span class="text-xs uppercase tracking-wider font-semibold">Extracted Entities</span>
+          <i data-lucide="binary" class="w-5 h-5 text-cyan-400"></i>
+        </div>
+        <div id="stat-fields" class="font-display font-extrabold text-3xl text-cyan-400">0</div>
+        <p class="text-xs text-slate-400 mt-1">Key fields populated</p>
+      </div>
+
+      <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
+        <div class="flex items-center justify-between text-slate-400 mb-2">
+          <span class="text-xs uppercase tracking-wider font-semibold">Avg. Accuracy</span>
+          <i data-lucide="zap" class="w-5 h-5 text-amber-400"></i>
+        </div>
+        <div id="stat-confidence" class="font-display font-extrabold text-3xl text-amber-400">0%</div>
+        <p class="text-xs text-slate-400 mt-1">Classification confidence</p>
+      </div>
+    </div>
+
+    <!-- Dropzone / Upload Box -->
+    <div id="dropzone" class="glass-card rounded-3xl p-8 border-2 border-dashed border-slate-700 hover:border-indigo-500/60 transition-all text-center relative cursor-pointer group">
+      <input type="file" id="file-input" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.docx" class="hidden" onchange="handleFileSelect(event)">
+      
+      <div class="max-w-md mx-auto space-y-4">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center group-hover:scale-110 transition duration-300">
+          <i data-lucide="upload-cloud" class="w-8 h-8 text-indigo-400"></i>
+        </div>
+        <div>
+          <h3 class="font-display font-bold text-lg text-white">Drag & drop your identity documents here</h3>
+          <p class="text-sm text-slate-400 mt-1">or click to browse from your computer</p>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-center gap-2 pt-2">
+          <span class="px-2.5 py-1 text-xs rounded-md bg-slate-800 text-slate-300 border border-slate-700">📄 PDF (Multi-page)</span>
+          <span class="px-2.5 py-1 text-xs rounded-md bg-slate-800 text-slate-300 border border-slate-700">🖼️ PNG / JPG / WebP</span>
+          <span class="px-2.5 py-1 text-xs rounded-md bg-slate-800 text-slate-300 border border-slate-700">📝 Word (.docx)</span>
+        </div>
+
+        <div class="pt-4 flex items-center justify-center gap-3">
+          <button onclick="document.getElementById('file-input').click(); event.stopPropagation();" class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm transition shadow-lg shadow-indigo-600/30">
+            Select Documents
+          </button>
+          <button onclick="loadSampleDataset(); event.stopPropagation();" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-indigo-500/30 font-medium text-sm transition">
+            Load Sample Dataset
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Processing Progress -->
+    <div id="processing-banner" class="hidden glass-card rounded-2xl p-6 border border-indigo-500/30 bg-indigo-950/20">
+      <div class="flex items-center space-x-4">
+        <div class="w-8 h-8 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin"></div>
+        <div class="flex-1">
+          <h4 id="processing-status" class="font-medium text-sm text-indigo-200">Processing document...</h4>
+          <p id="processing-subtext" class="text-xs text-slate-400 mt-0.5">Running Deep Neural OCR & Document Classification...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter Pills & Search Bar -->
+    <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+      <!-- Category Filter Tabs -->
+      <div id="filter-tabs" class="flex items-center space-x-1.5 overflow-x-auto pb-2 md:pb-0 scrollbar-none">
+        <button onclick="setFilter('all')" data-filter="all" class="filter-btn active px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition">
+          All (<span id="count-all">0</span>)
+        </button>
+        <button onclick="setFilter('aadhar')" data-filter="aadhar" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+          Aadhaar (<span id="count-aadhar">0</span>)
+        </button>
+        <button onclick="setFilter('pan')" data-filter="pan" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+          PAN Card (<span id="count-pan">0</span>)
+        </button>
+        <button onclick="setFilter('driver')" data-filter="driver" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+          Driving License (<span id="count-driver">0</span>)
+        </button>
+        <button onclick="setFilter('voter')" data-filter="voter" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+          Voter ID (<span id="count-voter">0</span>)
+        </button>
+        <button onclick="setFilter('passport')" data-filter="passport" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+          Passport (<span id="count-passport">0</span>)
+        </button>
+        <button onclick="setFilter('salary')" data-filter="salary" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+          Salary (<span id="count-salary">0</span>)
+        </button>
+        <button onclick="setFilter('form16')" data-filter="form16" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+          Form 16 (<span id="count-form16">0</span>)
+        </button>
+        <button onclick="setFilter('bank')" data-filter="bank" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+          Bank (<span id="count-bank">0</span>)
+        </button>
+        <button onclick="setFilter('cheque')" data-filter="cheque" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+          Cheque (<span id="count-cheque">0</span>)
+        </button>
+        <button onclick="setFilter('bill')" data-filter="bill" class="filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition">
+          Bill (<span id="count-bill">0</span>)
+        </button>
+      </div>
+
+      <!-- Search Input -->
+      <div class="relative min-w-[260px]">
+        <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+        <input type="text" id="search-input" oninput="applyFilters()" placeholder="Search names, ID numbers..." class="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-800/90 border border-slate-700 text-xs sm:text-sm text-slate-200 focus:outline-none focus:border-indigo-500 transition placeholder:text-slate-500">
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="py-16 text-center space-y-3">
+      <div class="w-16 h-16 mx-auto rounded-full bg-slate-800 flex items-center justify-center text-slate-500">
+        <i data-lucide="folder-search" class="w-8 h-8"></i>
+      </div>
+      <h3 class="font-display font-semibold text-lg text-slate-300">No documents processed yet</h3>
+      <p class="text-sm text-slate-500 max-w-sm mx-auto">Upload a document above or click "Try Sample (10 Docs)" to test the preloaded sample identity documents.</p>
+    </div>
+
+    <!-- Documents Grid -->
+    <div id="documents-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+  </main>
+
+  <!-- Detailed Document Inspector Modal -->
+  <div id="inspector-modal" class="fixed inset-0 z-50 hidden bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="glass-card bg-slate-900 border border-slate-700 rounded-3xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <span id="modal-badge" class="px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider"></span>
+          <div>
+            <h3 id="modal-title" class="font-display font-bold text-lg text-white"></h3>
+            <p id="modal-subtitle" class="text-xs text-slate-400"></p>
+          </div>
+        </div>
+        <button onclick="closeModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body (Two Column) -->
+      <div class="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-800">
+        <!-- Left: Image Viewer -->
+        <div class="p-6 flex flex-col items-center justify-center bg-slate-950/50 relative overflow-hidden">
+          <div class="w-full h-full min-h-[350px] max-h-[500px] flex items-center justify-center overflow-auto rounded-xl border border-slate-800/80 p-2 bg-slate-900/60">
+            <img id="modal-image" src="" alt="Document Preview" class="max-h-full max-w-full object-contain rounded-lg shadow-lg">
+          </div>
+          <div class="mt-4 flex items-center space-x-3">
+            <a id="modal-download-img" href="#" target="_blank" class="px-3 py-1.5 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center space-x-1.5 transition">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>Download Full Image</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- Right: Extracted Fields & Data -->
+        <div class="p-6 space-y-6 overflow-y-auto">
+          <!-- Confidence Box -->
+          <div class="p-4 rounded-xl bg-slate-800/60 border border-slate-700/60 flex items-center justify-between">
+            <div>
+              <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Classification Confidence</div>
+              <div id="modal-confidence-text" class="text-xl font-bold font-display text-white mt-0.5"></div>
+            </div>
+            <div id="modal-signals" class="flex flex-wrap gap-1 max-w-[200px] justify-end"></div>
+          </div>
+
+          <!-- Structured Attributes Form -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs uppercase font-bold text-slate-400 tracking-wider flex items-center space-x-1.5">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-400"></i>
+                <span>Extracted Key Fields</span>
+              </h4>
+              <span class="text-[11px] text-slate-500">Click value to copy</span>
+            </div>
+            <div id="modal-fields-container" class="space-y-2.5"></div>
+          </div>
+
+          <!-- Raw OCR Collapsible -->
+          <div class="border border-slate-800 rounded-xl overflow-hidden">
+            <button onclick="toggleRawText()" class="w-full px-4 py-2.5 bg-slate-800/40 hover:bg-slate-800 text-left text-xs font-medium text-slate-300 flex items-center justify-between transition">
+              <span class="flex items-center space-x-1.5">
+                <i data-lucide="file-text" class="w-3.5 h-3.5 text-slate-400"></i>
+                <span>Raw OCR Extracted Text</span>
+              </span>
+              <i id="raw-arrow" data-lucide="chevron-down" class="w-4 h-4 text-slate-400 transition-transform"></i>
+            </button>
+            <div id="modal-raw-text-wrapper" class="hidden p-3 bg-slate-950 font-mono text-xs text-slate-400 whitespace-pre-wrap max-h-48 overflow-y-auto border-t border-slate-800 select-all">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-3 border-t border-slate-800 bg-slate-900/60 flex items-center justify-end space-x-3">
+        <button onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none px-4 py-3 rounded-xl bg-indigo-600 text-white text-xs font-medium shadow-2xl flex items-center space-x-2">
+    <i data-lucide="check-circle" class="w-4 h-4 text-indigo-200"></i>
+    <span id="toast-message">Copied to clipboard</span>
+  </div>
+
+  <!-- Application Logic -->
+  <script>
+    let allDocuments = [];
+    let currentFilter = 'all';
+    let currentModalItem = null;
+
+    // Initialize Lucide Icons
+    document.addEventListener("DOMContentLoaded", () => {
+      lucide.createIcons();
+      setupDropzone();
+      fetchInitialStats();
+    });
+
+    function setupDropzone() {
+      const dropzone = document.getElementById("dropzone");
+
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.add("border-indigo-500", "bg-indigo-950/20");
+        }, false);
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.remove("border-indigo-500", "bg-indigo-950/20");
+        }, false);
+      });
+
+      dropzone.addEventListener("drop", (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files.length > 0) {
+          uploadFiles(files);
+        }
+      });
+    }
+
+    function handleFileSelect(e) {
+      const files = e.target.files;
+      if (files.length > 0) {
+        uploadFiles(files);
+      }
+    }
+
+    async function uploadFiles(files) {
+      showProcessing(true, "Analyzing uploaded documents...", "Running ONNX OCR Engine & Document Classifier...");
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append("files", files[i]);
+      }
+
+      try {
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: formData
+        });
+        const data = await response.json();
+        if (data.status === "success") {
+          allDocuments.push(...data.items);
+          renderDocuments();
+          showToast(`Successfully processed ${data.processed_count} document page(s)!`);
+        } else {
+          alert("Error processing documents: " + (data.detail || "Unknown error"));
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Upload failed: " + err.message);
+      } finally {
+        showProcessing(false);
+      }
+    }
+
+    async function loadSampleDataset() {
+      showProcessing(true, "Loading Sample Documents...", "Running OCR & multi-class extraction on documents.pdf (10 pages)...");
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 9000);
+        
+        let data = null;
+        try {
+          const response = await fetch("/api/sample", { method: "POST", signal: controller.signal });
+          clearTimeout(timeoutId);
+          if (response.ok) {
+            data = await response.json();
+          }
+        } catch (fetchErr) {
+          console.warn("Serverless OCR timed out or cold-booting, loading cached sample dataset...", fetchErr);
+        }
+
+        // Fallback to static sample_docs.json if API was slow or unavailable
+        if (!data || data.status !== "success" || !data.items) {
+          const staticRes = await fetch("/static/sample_docs.json");
+          if (staticRes.ok) {
+            data = await staticRes.json();
+          }
+        }
+
+        if (data && data.status === "success") {
+          allDocuments = data.items;
+          renderDocuments();
+          showToast(`Loaded and classified all 10 sample documents!`);
+        } else {
+          alert("Failed to load sample dataset: " + (data?.detail || "Network timeout"));
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Sample loading failed: " + err.message);
+      } finally {
+        showProcessing(false);
+      }
+    }
+
+    async function fetchInitialStats() {
+      try {
+        const res = await fetch("/api/stats");
+        const stats = await res.json();
+        if (stats.total > 0) {
+          const resAll = await fetch("/api/export-json");
+          allDocuments = await resAll.json();
+          renderDocuments();
+        }
+      } catch (e) {}
+    }
+
+    function showProcessing(show, title = "", subtext = "") {
+      const banner = document.getElementById("processing-banner");
+      if (show) {
+        document.getElementById("processing-status").innerText = title;
+        document.getElementById("processing-subtext").innerText = subtext;
+        banner.classList.remove("hidden");
+      } else {
+        banner.classList.add("hidden");
+      }
+    }
+
+    function setFilter(filter) {
+      currentFilter = filter;
+      document.querySelectorAll(".filter-btn").forEach(btn => {
+        if (btn.dataset.filter === filter) {
+          btn.className = "filter-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition";
+        } else {
+          btn.className = "filter-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 transition";
+        }
+      });
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const search = document.getElementById("search-input").value.toLowerCase().trim();
+      const filtered = allDocuments.filter(doc => {
+        const matchesCat = (currentFilter === 'all') || (doc.classification.type === currentFilter);
+        if (!matchesCat) return false;
+        if (!search) return true;
+
+        const inTitle = doc.classification.title.toLowerCase().includes(search);
+        const inFilename = doc.filename.toLowerCase().includes(search);
+        const inText = doc.text_full.toLowerCase().includes(search);
+        const inFields = Object.values(doc.fields).some(v => String(v).toLowerCase().includes(search));
+        return inTitle || inFilename || inText || inFields;
+      });
+
+      renderGrid(filtered);
+    }
+
+    function renderDocuments() {
+      updateCounts();
+      applyFilters();
+    }
+
+    function updateCounts() {
+      document.getElementById("stat-total").innerText = allDocuments.length;
+      const classified = allDocuments.filter(d => d.classification.type !== "unknown");
+      document.getElementById("stat-classified").innerText = classified.length;
+      
+      const totalFields = allDocuments.reduce((acc, d) => acc + Object.keys(d.fields).length, 0);
+      document.getElementById("stat-fields").innerText = totalFields;
+
+      const avgConf = allDocuments.length ? Math.round(allDocuments.reduce((acc, d) => acc + d.classification.confidence, 0) / allDocuments.length) : 0;
+      document.getElementById("stat-confidence").innerText = `${avgConf}%`;
+
+      // Update Tab Counts
+      const catCounts = { all: allDocuments.length };
+      ['aadhar', 'pan', 'driver', 'voter', 'passport', 'salary', 'form16', 'bank', 'cheque', 'bill'].forEach(k => {
+        catCounts[k] = allDocuments.filter(d => d.classification.type === k).length;
+        const el = document.getElementById(`count-${k}`);
+        if (el) el.innerText = catCounts[k];
+      });
+      document.getElementById("count-all").innerText = allDocuments.length;
+    }
+
+    function renderGrid(docs) {
+      const grid = document.getElementById("documents-grid");
+      const empty = document.getElementById("empty-state");
+
+      if (docs.length === 0) {
+        grid.innerHTML = "";
+        empty.classList.remove("hidden");
+        return;
+      }
+      empty.classList.add("hidden");
+
+      grid.innerHTML = docs.map((doc, idx) => {
+        const c = doc.classification;
+        const badgeClass = `badge-${c.type}`;
+        const fieldsList = Object.entries(doc.fields).slice(0, 3);
+
+        return `
+          <div onclick="openInspector('${doc.id}')" class="glass-card rounded-2xl p-5 flex flex-col justify-between space-y-4 cursor-pointer hover:-translate-y-1 transition duration-200 group">
+            
+            <!-- Card Top Header -->
+            <div class="flex items-center justify-between">
+              <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${badgeClass}">
+                ${c.title}
+              </span>
+              <div class="flex items-center space-x-1.5 text-xs text-slate-400">
+                <span class="font-mono font-medium text-emerald-400">${c.confidence}%</span>
+              </div>
+            </div>
+
+            <!-- Thumbnail Preview -->
+            <div class="w-full h-44 rounded-xl overflow-hidden bg-slate-950/60 border border-slate-800 flex items-center justify-center relative group-hover:border-indigo-500/40 transition">
+              <img src="${doc.image_data || '/api/preview/' + doc.id}" alt="${c.title}" class="w-full h-full object-contain p-1 group-hover:scale-105 transition duration-300" loading="lazy">
+              <div class="absolute inset-0 bg-slate-950/20 group-hover:bg-transparent transition"></div>
+              <span class="absolute bottom-2 right-2 px-2 py-0.5 rounded text-[10px] bg-slate-900/80 text-slate-300 font-mono border border-slate-700/80">
+                Page ${doc.page_number} / ${doc.total_pages}
+              </span>
+            </div>
+
+            <!-- Extracted Attributes Pills -->
+            <div class="space-y-1.5 flex-1">
+              ${fieldsList.length > 0 ? fieldsList.map(([k, v]) => `
+                <div class="flex items-center justify-between text-xs py-1 px-2.5 rounded-lg bg-slate-800/60 border border-slate-700/50">
+                  <span class="text-slate-400 font-medium truncate max-w-[120px]">${k}</span>
+                  <span class="text-slate-200 font-mono font-semibold truncate max-w-[150px]">${v}</span>
+                </div>
+              `).join('') : `
+                <div class="text-xs text-slate-500 italic py-2 text-center">No key fields extracted</div>
+              `}
+            </div>
+
+            <!-- Card Bottom Bar -->
+            <div class="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+              <span class="truncate max-w-[180px]">${doc.filename}</span>
+              <span class="text-indigo-400 group-hover:text-indigo-300 flex items-center space-x-1 font-medium">
+                <span>Inspect</span>
+                <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+              </span>
+            </div>
+
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    function openInspector(docId) {
+      const doc = allDocuments.find(d => d.id === docId);
+      if (!doc) return;
+      currentModalItem = doc;
+
+      const c = doc.classification;
+      const modal = document.getElementById("inspector-modal");
+      
+      const badge = document.getElementById("modal-badge");
+      badge.className = `px-3 py-1 rounded-full text-xs font-semibold ${badgeClass(c.type)}`;
+      badge.innerText = c.title;
+
+      document.getElementById("modal-title").innerText = c.title;
+      document.getElementById("modal-subtitle").innerText = `${doc.filename} • Page ${doc.page_number} of ${doc.total_pages}`;
+      document.getElementById("modal-confidence-text").innerText = `${c.confidence}% Match`;
+
+      // Render signals
+      const sigsEl = document.getElementById("modal-signals");
+      sigsEl.innerHTML = (c.signals || []).map(s => `
+        <span class="px-2 py-0.5 rounded text-[10px] bg-slate-700/60 text-slate-300 font-mono">${s}</span>
+      `).join('');
+
+      // Preview Image
+      const previewSrc = doc.image_data || `/api/preview/${doc.id}`;
+      document.getElementById("modal-image").src = previewSrc;
+      document.getElementById("modal-download-img").href = previewSrc;
+      document.getElementById("modal-download-img").download = `${c.type}_page${doc.page_number}.jpg`;
+
+      // Fields Container
+      const fieldsContainer = document.getElementById("modal-fields-container");
+      const entries = Object.entries(doc.fields);
+      if (entries.length > 0) {
+        fieldsContainer.innerHTML = entries.map(([key, val]) => `
+          <div onclick="copyText('${escapeHtml(String(val))}')" class="p-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 flex items-center justify-between cursor-pointer transition group">
+            <div>
+              <div class="text-[11px] font-medium text-slate-400 uppercase tracking-wider">${key}</div>
+              <div class="text-sm font-semibold font-mono text-indigo-200 mt-0.5 select-all">${val}</div>
+            </div>
+            <i data-lucide="copy" class="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition"></i>
+          </div>
+        `).join('');
+      } else {
+        fieldsContainer.innerHTML = `
+          <div class="p-4 rounded-xl bg-slate-800/40 text-center text-xs text-slate-400 italic">
+            No specific structured fields detected for this document category.
+          </div>
+        `;
+      }
+
+      // Raw OCR
+      document.getElementById("modal-raw-text-wrapper").innerText = doc.text_full || "No text detected.";
+
+      modal.classList.remove("hidden");
+      lucide.createIcons();
+    }
+
+    function closeModal() {
+      document.getElementById("inspector-modal").classList.add("hidden");
+    }
+
+    function toggleRawText() {
+      const wrapper = document.getElementById("modal-raw-text-wrapper");
+      const arrow = document.getElementById("raw-arrow");
+      if (wrapper.classList.contains("hidden")) {
+        wrapper.classList.remove("hidden");
+        arrow.classList.add("rotate-180");
+      } else {
+        wrapper.classList.add("hidden");
+        arrow.classList.remove("rotate-180");
+      }
+    }
+
+    function badgeClass(type) {
+      return `badge-${type}`;
+    }
+
+    function copyText(val) {
+      navigator.clipboard.writeText(val).then(() => {
+        showToast(`Copied "${val}" to clipboard!`);
+      }).catch(err => {
+        showToast(`Copied!`);
+      });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      document.getElementById("toast-message").innerText = msg;
+      toast.classList.remove("translate-y-20", "opacity-0");
+      setTimeout(() => {
+        toast.classList.add("translate-y-20", "opacity-0");
+      }, 2500);
+    }
+
+    async function downloadZip() {
+      if (allDocuments.length === 0) {
+        alert("Please upload or process documents first!");
+        return;
+      }
+      showToast("Generating organized ZIP archive with folders...");
+
+      // Use JSZip for instant browser-side generation if available
+      if (window.JSZip) {
+        try {
+          const zip = new JSZip();
+          const summaryRows = [["Filename", "Page", "Category", "Confidence", "Extracted Fields"]];
+
+          for (const d of allDocuments) {
+            const cat = d.classification.type || "other";
+            const baseName = (d.filename || "document").replace(/\.[^/.]+$/, "");
+            const pageNum = d.page_number;
+            const folder = zip.folder(cat);
+
+            // Add Image if base64 available
+            if (d.image_data && d.image_data.includes(",")) {
+              const base64Data = d.image_data.split(",")[1];
+              folder.file(`${baseName}_page${pageNum}.jpg`, base64Data, { base64: true });
+            }
+
+            // Add text metadata info
+            let infoTxt = `Document Category: ${d.classification.title}\n`;
+            infoTxt += `Confidence Score: ${d.classification.confidence}%\n`;
+            infoTxt += `Source File: ${d.filename} (Page ${pageNum})\n\n`;
+            infoTxt += `--- EXTRACTED FIELDS ---\n`;
+            for (const [k, v] of Object.entries(d.fields || {})) {
+              infoTxt += `${k}: ${v}\n`;
+            }
+            infoTxt += `\n--- DETECTED TEXT ---\n${d.text_full || ""}`;
+            folder.file(`${baseName}_page${pageNum}_info.txt`, infoTxt);
+
+            const fieldsStr = Object.entries(d.fields || {}).map(([k, v]) => `${k}: ${v}`).join("; ");
+            summaryRows.push([d.filename, String(pageNum), d.classification.title, `${d.classification.confidence}%`, fieldsStr]);
+          }
+
+          // Add CSV to root of zip
+          const csvStr = summaryRows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+          zip.file("summary_report.csv", csvStr);
+
+          const content = await zip.generateAsync({ type: "blob" });
+          const url = URL.createObjectURL(content);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "classified_documents_archive.zip";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          showToast("ZIP download started successfully!");
+          return;
+        } catch (e) {
+          console.warn("Client-side ZIP failed, falling back to server...", e);
+        }
+      }
+
+      window.location.href = "/api/download-zip";
+    }
+
+    function exportCsv() {
+      if (allDocuments.length === 0) {
+        alert("No documents to export.");
+        return;
+      }
+
+      try {
+        const rows = [["Item ID", "Filename", "Page", "Document Type", "Confidence (%)", "Extracted Fields", "Raw OCR Excerpt"]];
+        allDocuments.forEach(d => {
+          const c = d.classification || {};
+          const fieldsStr = Object.entries(d.fields || {}).map(([k, v]) => `${k}: ${v}`).join("; ");
+          rows.push([
+            d.id,
+            d.filename || "",
+            d.page_number,
+            c.title || "",
+            c.confidence || "",
+            fieldsStr,
+            d.text_preview || ""
+          ]);
+        });
+
+        const csvContent = "\uFEFF" + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "classified_documents_report.csv";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        showToast("Exported CSV successfully!");
+      } catch (err) {
+        window.location.href = "/api/export-csv";
+      }
+    }
+
+    async function clearAll() {
+      if (!confirm("Are you sure you want to clear all processed documents?")) return;
+      await fetch("/api/clear", { method: "POST" });
+      allDocuments = [];
+      renderDocuments();
+      showToast("Cleared all documents.");
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+  </script>
+</body>
+</html>
+
