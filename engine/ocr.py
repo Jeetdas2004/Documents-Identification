@@ -9,14 +9,30 @@ _rapid_ocr_instance = None
 def get_ocr_engine():
     global _rapid_ocr_instance
     if _rapid_ocr_instance is None:
-        from rapidocr_onnxruntime import RapidOCR
-        _rapid_ocr_instance = RapidOCR()
+        try:
+            from rapidocr_onnxruntime import RapidOCR
+            _rapid_ocr_instance = RapidOCR()
+        except Exception as e:
+            print(f"[Warning] RapidOCR could not be initialized (serverless/constrained environment): {e}")
+            _rapid_ocr_instance = False
     return _rapid_ocr_instance
 
 def run_ocr_on_image_bytes(image_bytes: bytes) -> Dict[str, Any]:
     """Runs RapidOCR on image bytes and returns concatenated text and detected lines."""
     engine = get_ocr_engine()
-    result, elapse = engine(image_bytes)
+    if not engine:
+        return {
+            "text": "Image uploaded. Running in serverless demo mode.",
+            "lines": [],
+            "elapse": []
+        }
+        
+    try:
+        result, elapse = engine(image_bytes)
+    except Exception as e:
+        print(f"[Error] OCR processing failed on page image: {e}")
+        result, elapse = None, []
+        
     lines = []
     text_parts = []
     

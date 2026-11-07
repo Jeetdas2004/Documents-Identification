@@ -243,6 +243,48 @@ Documents-Identification/
 
 ---
 
+## 🚀 Live Deployment Guide
+
+### Option 1: Deploy on Vercel (Serverless)
+
+This repository is pre-configured with `vercel.json` and `api/index.py` for direct deployment on Vercel:
+
+1. **Push your code to GitHub** (if you made any recent commits):
+   ```bash
+   git add .
+   git commit -m "Configure Vercel deployment"
+   git push origin main
+   ```
+2. **Import to Vercel**:
+   - Go to [vercel.com](https://vercel.com) and log in with your GitHub account.
+   - Click **Add New...** > **Project**.
+   - Select your repository `Documents-Identification`.
+   - Leave the Framework Preset as **Other** (Vercel will automatically read `vercel.json`).
+   - Click **Deploy**.
+3. **Your App is Live**:
+   - Vercel will build and assign you a live production URL (e.g., `https://documents-identification.vercel.app`).
+   - The interactive UI, sample dataset (10 documents), instant client-side CSV export, and category-sorted ZIP download are fully enabled!
+
+---
+
+### Option 2: Deploy on Render or Hugging Face Spaces (Persistent Python / AI Host)
+
+For full native deep learning OCR inference on arbitrarily large PDFs without serverless function size or 10-second timeout limits:
+
+- **Render.com**:
+  1. Go to [render.com](https://render.com) and click **New +** > **Web Service**.
+  2. Connect your GitHub repository `Documents-Identification`.
+  3. Render will automatically detect `render.yaml` or you can select **Python 3** with:
+     - **Build Command**: `pip install -r requirements.txt`
+     - **Start Command**: `uvicorn app:app --host 0.0.0.0 --port $PORT`
+  4. Click **Deploy Web Service**.
+
+- **Hugging Face Spaces**:
+  1. Create a new Space on [huggingface.co/spaces](https://huggingface.co/spaces) with SDK set to **Docker**.
+  2. Connect this repository — the included `Dockerfile` will build and host your app on permanent free CPU tier.
+
+---
+
 ## 📜 License
 
 Distributed under the MIT License. Feel free to use, modify, and distribute for educational, research, and commercial projects.

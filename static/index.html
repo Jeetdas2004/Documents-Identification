@@ -12,6 +12,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- JSZip for Instant Client-side Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -419,14 +421,34 @@
     async function loadSampleDataset() {
       showProcessing(true, "Loading Sample Documents...", "Running OCR & multi-class extraction on documents.pdf (10 pages)...");
       try {
-        const response = await fetch("/api/sample", { method: "POST" });
-        const data = await response.json();
-        if (data.status === "success") {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 9000);
+        
+        let data = null;
+        try {
+          const response = await fetch("/api/sample", { method: "POST", signal: controller.signal });
+          clearTimeout(timeoutId);
+          if (response.ok) {
+            data = await response.json();
+          }
+        } catch (fetchErr) {
+          console.warn("Serverless OCR timed out or cold-booting, loading cached sample dataset...", fetchErr);
+        }
+
+        // Fallback to static sample_docs.json if API was slow or unavailable
+        if (!data || data.status !== "success" || !data.items) {
+          const staticRes = await fetch("/static/sample_docs.json");
+          if (staticRes.ok) {
+            data = await staticRes.json();
+          }
+        }
+
+        if (data && data.status === "success") {
           allDocuments = data.items;
           renderDocuments();
           showToast(`Loaded and classified all 10 sample documents!`);
         } else {
-          alert("Failed to load sample dataset: " + (data.detail || ""));
+          alert("Failed to load sample dataset: " + (data?.detail || "Network timeout"));
         }
       } catch (err) {
         console.error(err);
@@ -545,7 +567,7 @@
 
             <!-- Thumbnail Preview -->
             <div class="w-full h-44 rounded-xl overflow-hidden bg-slate-950/60 border border-slate-800 flex items-center justify-center relative group-hover:border-indigo-500/40 transition">
-              <img src="/api/preview/${doc.id}" alt="${c.title}" class="w-full h-full object-contain p-1 group-hover:scale-105 transition duration-300" loading="lazy">
+              <img src="${doc.image_data || '/api/preview/' + doc.id}" alt="${c.title}" class="w-full h-full object-contain p-1 group-hover:scale-105 transition duration-300" loading="lazy">
               <div class="absolute inset-0 bg-slate-950/20 group-hover:bg-transparent transition"></div>
               <span class="absolute bottom-2 right-2 px-2 py-0.5 rounded text-[10px] bg-slate-900/80 text-slate-300 font-mono border border-slate-700/80">
                 Page ${doc.page_number} / ${doc.total_pages}
@@ -603,8 +625,9 @@
       `).join('');
 
       // Preview Image
-      document.getElementById("modal-image").src = `/api/preview/${doc.id}`;
-      document.getElementById("modal-download-img").href = `/api/preview/${doc.id}`;
+      const previewSrc = doc.image_data || `/api/preview/${doc.id}`;
+      document.getElementById("modal-image").src = previewSrc;
+      document.getElementById("modal-download-img").href = previewSrc;
       document.getElementById("modal-download-img").download = `${c.type}_page${doc.page_number}.jpg`;
 
       // Fields Container
@@ -672,12 +695,66 @@
       }, 2500);
     }
 
-    function downloadZip() {
+    async function downloadZip() {
       if (allDocuments.length === 0) {
         alert("Please upload or process documents first!");
         return;
       }
       showToast("Generating organized ZIP archive with folders...");
+
+      // Use JSZip for instant browser-side generation if available
+      if (window.JSZip) {
+        try {
+          const zip = new JSZip();
+          const summaryRows = [["Filename", "Page", "Category", "Confidence", "Extracted Fields"]];
+
+          for (const d of allDocuments) {
+            const cat = d.classification.type || "other";
+            const baseName = (d.filename || "document").replace(/\.[^/.]+$/, "");
+            const pageNum = d.page_number;
+            const folder = zip.folder(cat);
+
+            // Add Image if base64 available
+            if (d.image_data && d.image_data.includes(",")) {
+              const base64Data = d.image_data.split(",")[1];
+              folder.file(`${baseName}_page${pageNum}.jpg`, base64Data, { base64: true });
+            }
+
+            // Add text metadata info
+            let infoTxt = `Document Category: ${d.classification.title}\n`;
+            infoTxt += `Confidence Score: ${d.classification.confidence}%\n`;
+            infoTxt += `Source File: ${d.filename} (Page ${pageNum})\n\n`;
+            infoTxt += `--- EXTRACTED FIELDS ---\n`;
+            for (const [k, v] of Object.entries(d.fields || {})) {
+              infoTxt += `${k}: ${v}\n`;
+            }
+            infoTxt += `\n--- DETECTED TEXT ---\n${d.text_full || ""}`;
+            folder.file(`${baseName}_page${pageNum}_info.txt`, infoTxt);
+
+            const fieldsStr = Object.entries(d.fields || {}).map(([k, v]) => `${k}: ${v}`).join("; ");
+            summaryRows.push([d.filename, String(pageNum), d.classification.title, `${d.classification.confidence}%`, fieldsStr]);
+          }
+
+          // Add CSV to root of zip
+          const csvStr = summaryRows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+          zip.file("summary_report.csv", csvStr);
+
+          const content = await zip.generateAsync({ type: "blob" });
+          const url = URL.createObjectURL(content);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "classified_documents_archive.zip";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          showToast("ZIP download started successfully!");
+          return;
+        } catch (e) {
+          console.warn("Client-side ZIP failed, falling back to server...", e);
+        }
+      }
+
       window.location.href = "/api/download-zip";
     }
 
@@ -686,7 +763,37 @@
         alert("No documents to export.");
         return;
       }
-      window.location.href = "/api/export-csv";
+
+      try {
+        const rows = [["Item ID", "Filename", "Page", "Document Type", "Confidence (%)", "Extracted Fields", "Raw OCR Excerpt"]];
+        allDocuments.forEach(d => {
+          const c = d.classification || {};
+          const fieldsStr = Object.entries(d.fields || {}).map(([k, v]) => `${k}: ${v}`).join("; ");
+          rows.push([
+            d.id,
+            d.filename || "",
+            d.page_number,
+            c.title || "",
+            c.confidence || "",
+            fieldsStr,
+            d.text_preview || ""
+          ]);
+        });
+
+        const csvContent = "\uFEFF" + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "classified_documents_report.csv";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        showToast("Exported CSV successfully!");
+      } catch (err) {
+        window.location.href = "/api/export-csv";
+      }
     }
 
     async function clearAll() {

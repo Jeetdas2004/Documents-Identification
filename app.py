@@ -3,6 +3,7 @@ import io
 import uuid
 import zipfile
 import csv
+import base64
 from typing import List, Dict, Any
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Response
 from fastapi.responses import HTMLResponse, StreamingResponse
@@ -21,15 +22,23 @@ PAGE_IMAGES: Dict[str, bytes] = {}
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
-
 if not os.path.exists(STATIC_DIR):
-    os.makedirs(STATIC_DIR, exist_ok=True)
+    # Fallback to current working directory or relative static
+    alt_static = os.path.join(os.getcwd(), "static")
+    if os.path.exists(alt_static):
+        STATIC_DIR = alt_static
+    else:
+        os.makedirs(STATIC_DIR, exist_ok=True)
 
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_index():
     index_path = os.path.join(STATIC_DIR, "index.html")
+    if not os.path.exists(index_path):
+        alt_path = os.path.join(os.getcwd(), "static", "index.html")
+        if os.path.exists(alt_path):
+            index_path = alt_path
     if os.path.exists(index_path):
         with open(index_path, "r", encoding="utf-8") as f:
             return f.read()
@@ -69,7 +78,21 @@ def process_and_register_pages(pages: List[Dict[str, Any]], original_filename: s
         fields = extract_document_fields(classification["type"], text, lines)
         
         # Save image for preview
-        PAGE_IMAGES[item_id] = page["image_bytes"]
+        img_bytes = page.get("image_bytes", b"")
+        PAGE_IMAGES[item_id] = img_bytes
+        
+        # Generate base64 thumbnail for serverless persistence
+        image_data = ""
+        if img_bytes:
+            image_data = f"data:image/jpeg;base64,{base64.b64encode(img_bytes).decode('utf-8')}"
+            # Also write to temporary directory as file cache if supported
+            try:
+                tmp_dir = os.environ.get("TMPDIR", "/tmp")
+                if os.path.exists(tmp_dir) and os.path.isdir(tmp_dir):
+                    with open(os.path.join(tmp_dir, f"doc_{item_id}.jpg"), "wb") as f_tmp:
+                        f_tmp.write(img_bytes)
+            except Exception:
+                pass
         
         doc_record = {
             "id": item_id,
@@ -80,7 +103,8 @@ def process_and_register_pages(pages: List[Dict[str, Any]], original_filename: s
             "fields": fields,
             "text_preview": text[:250].replace("\n", " ").strip() if text else "No text detected",
             "text_full": text,
-            "source": page.get("source", "ocr")
+            "source": page.get("source", "ocr"),
+            "image_data": image_data
         }
         
         PROCESSED_DOCUMENTS[item_id] = doc_record
@@ -106,7 +130,11 @@ async def upload_documents(files: List[UploadFile] = File(...)):
 async def process_sample_dataset():
     sample_path = os.path.join(BASE_DIR, "documents.pdf")
     if not os.path.exists(sample_path):
-        raise HTTPException(status_code=404, detail="documents.pdf not found in project directory.")
+        alt_sample = os.path.join(os.getcwd(), "documents.pdf")
+        if os.path.exists(alt_sample):
+            sample_path = alt_sample
+        else:
+            raise HTTPException(status_code=404, detail="documents.pdf not found in project directory.")
         
     with open(sample_path, "rb") as f:
         content = f.read()
@@ -117,9 +145,17 @@ async def process_sample_dataset():
 
 @app.get("/api/preview/{item_id}")
 async def get_document_preview(item_id: str):
-    if item_id not in PAGE_IMAGES:
-        raise HTTPException(status_code=404, detail="Preview image not found.")
-    return Response(content=PAGE_IMAGES[item_id], media_type="image/jpeg")
+    if item_id in PAGE_IMAGES:
+        return Response(content=PAGE_IMAGES[item_id], media_type="image/jpeg")
+    
+    # Check /tmp directory fallback
+    tmp_dir = os.environ.get("TMPDIR", "/tmp")
+    tmp_file = os.path.join(tmp_dir, f"doc_{item_id}.jpg")
+    if os.path.exists(tmp_file):
+        with open(tmp_file, "rb") as f:
+            return Response(content=f.read(), media_type="image/jpeg")
+            
+    raise HTTPException(status_code=404, detail="Preview image not found.")
 
 class UpdateFieldRequest(BaseModel):
     item_id: str
